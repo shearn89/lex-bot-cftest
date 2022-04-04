@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Sample SAM Template 
+
+Resources:
+  LexbotRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lexv2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: LexV2BotPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - polly:SynthesizeSpeech
+                Resource: '*'
+  TestingLexBot:
+    Type: AWS::Lex::Bot
+    Properties:
+      RoleArn: !GetAtt LexbotRole.Arn
+      BotLocales:
+        - Description: Lex bot
+          Intents:
+            - Name: FallbackIntent
+              Description: Default intent when no other intent matches
+              ParentIntentSignature: AMAZON.FallbackIntent
+              FulfillmentCodeHook:
+                Enabled: true
+              DialogCodeHook:
+                Enabled: false
+          LocaleId: en_GB
+          NluConfidenceThreshold: 0.4
+          VoiceSettings:
+            VoiceId: Amy
+      DataPrivacy:
+        ChildDirected: false
+      IdleSessionTTLInSeconds: 60
+      AutoBuildBotLocales: true
+  TestingLexVersionOne:
+    Type: AWS::Lex::BotVersion
+    DependsOn:
+      - TestingLexBot
+    Properties:
+      BotId: !GetAtt TestingLexBot.Id
+      BotVersionLocaleSpecification:
+        - LocaleId: en_GB
+          BotVersionLocaleDetails:
+            SourceBotVersion: DRAFT
+  TestingLexAlias:
+    Type: AWS::Lex::BotAlias
+    Properties:
+      BotAliasName: Testing
+      BotId: !GetAtt TestingLexBot.Id
+      BotVersion: !GetAtt TestingLexVersionOne.BotVersion
